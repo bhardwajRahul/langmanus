@@ -2,7 +2,7 @@ import logging
 import json
 import logging
 from copy import deepcopy
-from typing import Literal
+from typing import Literal, Annotated
 from langchain_core.messages import HumanMessage, BaseMessage
 
 from langchain_core.messages import HumanMessage
@@ -24,7 +24,9 @@ RESPONSE_FORMAT = "Response from {}:\n\n<response>\n{}\n</response>\n\n*Please e
 
 
 @tool
-def handoff_to_planner():
+def handoff_to_planner(
+    task_title: Annotated[str, "The title of the task to be handoffed."],
+):
     """Handoff to planner agent to do plan."""
     # This tool is not returning anything: we're just using it
     # as a way for LLM to signal that it needs to hand off to planner agent
@@ -37,8 +39,6 @@ def research_node(state: State) -> Command[Literal["supervisor"]]:
     result = research_agent.invoke(state)
     logger.info("Research agent completed task")
     response_content = result["messages"][-1].content
-    # 尝试修复可能的JSON输出
-    response_content = repair_json_output(response_content)
     logger.debug(f"Research agent response: {response_content}")
     return Command(
         update={
@@ -59,8 +59,6 @@ def code_node(state: State) -> Command[Literal["supervisor"]]:
     result = coder_agent.invoke(state)
     logger.info("Code agent completed task")
     response_content = result["messages"][-1].content
-    # 尝试修复可能的JSON输出
-    response_content = repair_json_output(response_content)
     logger.debug(f"Code agent response: {response_content}")
     return Command(
         update={
@@ -81,8 +79,6 @@ def browser_node(state: State) -> Command[Literal["supervisor"]]:
     result = browser_agent.invoke(state)
     logger.info("Browser agent completed task")
     response_content = result["messages"][-1].content
-    # 尝试修复可能的JSON输出
-    response_content = repair_json_output(response_content)
     logger.debug(f"Browser agent response: {response_content}")
     return Command(
         update={
@@ -193,8 +189,6 @@ def reporter_node(state: State) -> Command[Literal["supervisor"]]:
     response = get_llm_by_type(AGENT_LLM_MAP["reporter"]).invoke(messages)
     logger.debug(f"Current state messages: {state['messages']}")
     response_content = response.content
-    # 尝试修复可能的JSON输出
-    response_content = repair_json_output(response_content)
     logger.debug(f"reporter response: {response_content}")
 
     return Command(
